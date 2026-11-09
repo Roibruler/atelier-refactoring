@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>ca.cegepmv.atelier</groupId>
+    <artifactId>atelier-refactoring</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Atelier - Réusinage (refactoring)</name>
+    <description>
+        Petit projet de démonstration volontairement truffé de "code smells" (méthode trop
+        longue, duplication, liste de paramètres trop longue, obsession des primitifs,
+        feature envy, data clump, conditions répétées) pour pratiquer le catalogue de
+        réusinages de Fowler, appuyé par une suite de tests partielle à compléter.
+    </description>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- JUnit 6 (nom de projet toujours "Jupiter" pour l'API @Test/@ParameterizedTest/...) -->
+        <junit.version>6.0.3</junit.version>
+    </properties>
+
+    <dependencies>
+        <!-- JUnit 6 (toujours appelé "Jupiter" pour l'API @Test/@ParameterizedTest/...) : API de tests + moteur d'exécution -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <!-- Compile le code source en byte code Java 21 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <!-- Exécute les tests unitaires (phase "test") et génère les rapports Surefire -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <!-- TODO (bonus, voir README Partie 5) : ajoutez ici le plugin jacoco-maven-plugin
+                 pour mesurer votre couverture de code avant/après l'ajout de vos tests de
+                 caractérisation (voir les notes de cours de la semaine 5). -->
+        </plugins>
+    </build>
+</project>

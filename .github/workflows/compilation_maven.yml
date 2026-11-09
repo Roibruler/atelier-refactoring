@@ -1,0 +1,47 @@
+#Nom du projet, décrit ce que fait le workflow
+name: Compilation et tests du projet Maven
+
+#S'exécute à chaque push et chaque Pull Request vers main, ou manuellement
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Récupérer le code
+            uses: actions/checkout@v5
+          - name: Installer le JDK 25
+            uses: actions/setup-java@v5
+            with:
+              distribution: 'temurin'
+              java-version: '25'
+              cache: maven
+          - name: Donner accès en exécution au wrapper
+            run: chmod +x mvnw
+          - name: Compilation du projet Maven
+            run: ./mvnw -B compile
+
+# TODO 1 : une fois vos tests de caractérisation écrits (README, Partie 2) et vos
+#          refactorings terminés (README, Partie 3), modifiez la dernière étape
+#          ci-dessus pour exécuter toute la suite de tests plutôt que la seule
+#          compilation (./mvnw -B clean verify).
+
+# TODO 2 (bonus) : ajoutez le plugin JaCoCo à votre pom.xml (voir les notes de cours
+#          de la semaine 5 — Tests automatisés) et ajoutez une étape qui génère le
+#          rapport de couverture (target/site/jacoco/index.html).
+
+# TODO 3 (bonus) : publiez le rapport JaCoCo comme artefact avec
+#          actions/upload-artifact@v5, avec if: always() pour qu'il soit publié même
+#          si un test échoue (voir les notes de cours de la semaine 5 — GitHub Actions,
+#          section Conditions d'exécution).
+
+# TODO 4 (bonus) : empaquetez le projet (./mvnw -B clean package) et publiez le .jar
+#          produit comme artefact distinct (voir les notes de cours de la semaine 5 —
+#          GitHub Actions, section Artefacts).
