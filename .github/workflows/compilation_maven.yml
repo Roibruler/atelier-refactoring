@@ -5,10 +5,10 @@ name: Compilation et tests du projet Maven
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 jobs:
@@ -25,23 +25,18 @@ jobs:
               cache: maven
           - name: Donner accès en exécution au wrapper
             run: chmod +x mvnw
-          - name: Compilation du projet Maven
-            run: ./mvnw -B compile
-
-# TODO 1 : une fois vos tests de caractérisation écrits (README, Partie 2) et vos
-#          refactorings terminés (README, Partie 3), modifiez la dernière étape
-#          ci-dessus pour exécuter toute la suite de tests plutôt que la seule
-#          compilation (./mvnw -B clean verify).
-
-# TODO 2 (bonus) : ajoutez le plugin JaCoCo à votre pom.xml (voir les notes de cours
-#          de la semaine 5 — Tests automatisés) et ajoutez une étape qui génère le
-#          rapport de couverture (target/site/jacoco/index.html).
-
-# TODO 3 (bonus) : publiez le rapport JaCoCo comme artefact avec
-#          actions/upload-artifact@v5, avec if: always() pour qu'il soit publié même
-#          si un test échoue (voir les notes de cours de la semaine 5 — GitHub Actions,
-#          section Conditions d'exécution).
-
-# TODO 4 (bonus) : empaquetez le projet (./mvnw -B clean package) et publiez le .jar
-#          produit comme artefact distinct (voir les notes de cours de la semaine 5 —
-#          GitHub Actions, section Artefacts).
+          - name: Compilation, tests et rapport de couverture JaCoCo
+            run: ./mvnw -B clean verify
+          - name: Publier le rapport JaCoCo
+            if: always()
+            uses: actions/upload-artifact@v5
+            with:
+              name: rapport-jacoco
+              path: target/site/jacoco/
+          - name: Empaqueter le projet
+            run: ./mvnw -B clean package
+          - name: Publier le .jar
+            uses: actions/upload-artifact@v5
+            with:
+              name: atelier-refactoring-jar
+              path: target/atelier-refactoring.jar

@@ -42,8 +42,8 @@ class ServiceCliniqueTest {
     void setUp() {
         service = new ServiceClinique();
         // Arrange commun : propriétaire avec un seul animal, solde à jour, cliente depuis 1 an
-        julie = new Proprietaire("Julie", "Tremblay", "123 rue des Lilas", "Longueuil",
-                "J4G 1A1", "julie.tremblay@example.com", "450-555-0100", 0.0, 1);
+                julie = new Proprietaire("Julie", "Tremblay",
+                new Adresse("123 rue des Lilas", "Longueuil", "J4G 1A1"), "julie.tremblay@example.com", "450-555-0100", 0.0, 1);
         julie.ajouterAnimal(new Animal(1, "Rex", "CHIEN", LocalDate.of(2020, 3, 15)));
     }
 
@@ -94,29 +94,139 @@ class ServiceCliniqueTest {
     // À COMPLÉTER — voir README, Partie 2 (tests de caractérisation)
     // ------------------------------------------------------------------
 
-    // TODO 1 — genererFacture() : cas VACCIN (tarif de base 35$, sans urgence)
+        @Test
+    void genererFacture_unVaccinSansUrgence_factureLeTarifDeBase() {
+        Visite vaccin = new Visite(LocalDate.now(), "VACCIN", false, "Dr Gagnon", "Rappel annuel");
 
-    // TODO 2 — genererFacture() : propriétaire avec 2 animaux ou plus (rabais de 10%
-    //          appliqué, et présent dans le texte de la facture — vérifiez le format
-    //          exact affiché par le code actuel avant d'écrire votre assertion)
+        String facture = service.genererFacture(julie, List.of(vaccin));
 
-    // TODO 3 — genererFacture() : propriétaire avec un solde négatif (pénalité de 5%)
+        assertEquals("Facture pour Julie Tremblay — Sous-total: $35.00 — Total: $35.00", facture);
+    }
 
-    // TODO 4 — calculerRemiseFidelite() : plus d'un animal ET anneesClient >= 3 (0.15)
+    @Test
+    void genererFacture_proprietaireAvecDeuxAnimaux_appliqueEtAfficheLaRemiseDeDixPourcent() {
+        julie.ajouterAnimal(new Animal(2, "Mimi", "CHAT", LocalDate.of(2021, 6, 1)));
+        Visite consultation = new Visite(LocalDate.now(), "CONSULTATION", false, "Dr Gagnon", "Visite de routine");
 
-    // TODO 5 — calculerRemiseFidelite() : plus d'un animal ET anneesClient < 3 (0.10)
+        String facture = service.genererFacture(julie, List.of(consultation));
 
-    // TODO 6 — calculerRemiseFidelite() : un seul animal ET anneesClient >= 5 (0.05)
+        assertEquals("Facture pour Julie Tremblay — Sous-total: $60.00 — Remise fidélité: -10% — Total: $54.00",
+                facture);
+    }
 
-    // TODO 7 — estimerCoutAnnuel() : plusieurs visites de types différents
+    @Test
+    void genererFacture_soldeNegatif_ajouteUnePenaliteDeCinqPourcent() {
+        Proprietaire marc = new Proprietaire("Marc", "Lavoie",
+                new Adresse("45 boul. Taschereau", "Brossard", "J4Z 2B2"), "marc.lavoie@example.com", "450-555-0200", -50.0, 1);
+        marc.ajouterAnimal(new Animal(3, "Bijou", "CHIEN", LocalDate.of(2019, 1, 10)));
+        Visite consultation = new Visite(LocalDate.now(), "CONSULTATION", false, "Dr Gagnon", "Visite de routine");
 
-    // TODO 8 — calculerDureeRendezVous() : CONSULTATION, VACCIN, CHIRURGIE, et un type
-    //          inconnu (documentez le comportement actuel, ne le "corrigez" pas)
+        String facture = service.genererFacture(marc, List.of(consultation));
 
-    // TODO 9 — genererRapportPourVeterinaire() : un cas normal avec un Veterinaire,
-    //          un Proprietaire et une liste de visites
+        assertEquals("Facture pour Marc Lavoie — Sous-total: $60.00 — Total: $63.00", facture);
+    }
 
-    // TODO 10 — planifierVisite() : un appel avec envoyerRappelEmail=true (vérifiez le
-    //           contenu de service.getJournalRappels()) ET un appel avec
-    //           envoyerRappelEmail=false (le journal doit rester vide)
+    @Test
+    void calculerRemiseFidelite_plusieursAnimauxEtTroisAnsOuPlus_retourneQuinzePourcent() {
+        Proprietaire proprietaire = proprietaireAvec(2, 3);
+
+        double remise = service.calculerRemiseFidelite(proprietaire);
+
+        assertEquals(0.15, remise);
+    }
+
+    @Test
+    void calculerRemiseFidelite_plusieursAnimauxEtMoinsDeTroisAns_retourneDixPourcent() {
+        Proprietaire proprietaire = proprietaireAvec(2, 2);
+
+        double remise = service.calculerRemiseFidelite(proprietaire);
+
+        assertEquals(0.10, remise);
+    }
+
+    @Test
+    void calculerRemiseFidelite_unSeulAnimalEtCinqAnsOuPlus_retourneCinqPourcent() {
+        Proprietaire proprietaire = proprietaireAvec(1, 5);
+
+        double remise = service.calculerRemiseFidelite(proprietaire);
+
+        assertEquals(0.05, remise);
+    }
+
+    @Test
+    void estimerCoutAnnuel_plusieursTypesDeVisites_multiplieLesTarifsDeBaseParDouzeSansMajorationDurgence() {
+        List<Visite> visites = List.of(
+                new Visite(LocalDate.now(), "CONSULTATION", false, "Dr Gagnon", ""),
+                new Visite(LocalDate.now(), "VACCIN", false, "Dr Gagnon", ""),
+                new Visite(LocalDate.now(), "CHIRURGIE", true, "Dr Gagnon", ""));
+
+        double coutAnnuel = service.estimerCoutAnnuel(visites);
+
+        assertEquals(4140.0, coutAnnuel);
+    }
+
+    @Test
+    void calculerDureeRendezVous_chaqueType_retourneLaDureeActuelleEtTrenteMinutesPourUnTypeInconnu() {
+        Visite consultation = new Visite(LocalDate.now(), "CONSULTATION", false, "Dr Gagnon", "");
+        Visite vaccin = new Visite(LocalDate.now(), "VACCIN", false, "Dr Gagnon", "");
+        Visite chirurgie = new Visite(LocalDate.now(), "CHIRURGIE", false, "Dr Gagnon", "");
+        Visite inconnue = new Visite(LocalDate.now(), "CHIRURGEI", false, "Dr Gagnon", "");
+
+        assertEquals(20, service.calculerDureeRendezVous(consultation));
+        assertEquals(10, service.calculerDureeRendezVous(vaccin));
+        assertEquals(90, service.calculerDureeRendezVous(chirurgie));
+        assertEquals(30, service.calculerDureeRendezVous(inconnue));
+    }
+
+    @Test
+    void genererRapportPourVeterinaire_casNormal_resumeLesCoordonneesEtLeNombreDeVisites() {
+        Veterinaire gagnon = new Veterinaire("Gagnon", "Chirurgie");
+        List<Visite> visites = List.of(
+                new Visite(LocalDate.now(), "CONSULTATION", false, "Dr Gagnon", ""),
+                new Visite(LocalDate.now(), "VACCIN", false, "Dr Gagnon", ""));
+
+        String rapport = service.genererRapportPourVeterinaire(gagnon, julie, visites);
+
+        assertEquals("Rapport du Dr Gagnon (Chirurgie)\n"
+                + "Client: Julie Tremblay\n"
+                + "Adresse: 123 rue des Lilas, Longueuil J4G 1A1\n"
+                + "Contact: julie.tremblay@example.com / 450-555-0100\n"
+                + "Nombre de visites: 2", rapport);
+    }
+
+    @Test
+    void planifierVisite_avecRappelEmail_creeLaVisiteEtAjouteUnRappelAuJournal() {
+        LocalDate date = LocalDate.of(2026, 3, 10);
+
+        Visite visite = service.planifierVisite(
+                new DemandeVisite(1, date, "VACCIN", false, "Dr Gagnon", "Rappel annuel", true));
+
+        assertEquals(date, visite.getDate());
+        assertEquals("VACCIN", visite.getType());
+        assertFalse(visite.isUrgence());
+        assertEquals("Dr Gagnon", visite.getNomVeterinaire());
+        assertEquals("Rappel annuel", visite.getNotes());
+        assertEquals(List.of("Rappel envoyé pour la visite du 2026-03-10 (animal #1)"), service.getJournalRappels());
+    }
+
+    @Test
+    void planifierVisite_sansRappelEmail_creeLaVisiteSansToucherAuJournal() {
+        LocalDate date = LocalDate.of(2026, 3, 10);
+
+        Visite visite = service.planifierVisite(
+                new DemandeVisite(1, date, "CHIRURGIE", true, "Dr Gagnon", "Fracture", false));
+
+        assertEquals("CHIRURGIE", visite.getType());
+        assertTrue(visite.isUrgence());
+        assertTrue(service.getJournalRappels().isEmpty());
+    }
+
+    private Proprietaire proprietaireAvec(int nombreAnimaux, int anneesClient) {
+        Proprietaire proprietaire = new Proprietaire("Luc", "Bergeron",
+                new Adresse("8 rue Principale", "Chambly", "J3L 1A1"), "luc.bergeron@example.com", "450-555-0300", 0.0, anneesClient);
+        for (int i = 1; i <= nombreAnimaux; i++) {
+            proprietaire.ajouterAnimal(new Animal(i, "Animal" + i, "CHIEN", LocalDate.of(2020, 1, i)));
+        }
+        return proprietaire;
+    }
 }

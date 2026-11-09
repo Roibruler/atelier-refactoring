@@ -33,6 +33,10 @@ public class Visite {
         return type;
     }
 
+    public TypeVisite getTypeVisite() {
+        return TypeVisite.depuis(type);
+    }
+    
     public boolean isUrgence() {
         return urgence;
     }

@@ -1,6 +1,5 @@
 package ca.cegepmv.atelier;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -54,36 +53,41 @@ public class ServiceClinique {
      * - Un solde de compte négatif ajoute une pénalité de 5% sur le total (après rabais).
      */
     public String genererFacture(Proprietaire proprietaire, List<Visite> visites) {
+        validerDemandeFacture(proprietaire, visites);
+        double sousTotal = calculerSousTotal(visites);
+        double remise = tauxRemiseFacture(proprietaire);
+        double total = appliquerPenaliteSolde(proprietaire, sousTotal - (sousTotal * remise));
+        return formaterFacture(proprietaire, sousTotal, remise, total);
+    }
+
+    private void validerDemandeFacture(Proprietaire proprietaire, List<Visite> visites) {
         if (proprietaire == null || visites == null || visites.isEmpty()) {
             throw new IllegalArgumentException("Le propriétaire et au moins une visite sont requis");
         }
+    }
 
+    private double calculerSousTotal(List<Visite> visites) {
         double sousTotal = 0.0;
         for (Visite visite : visites) {
-            double tarifBase;
-            if (visite.getType().equals("CONSULTATION")) {
-                tarifBase = 60.0;
-            } else if (visite.getType().equals("VACCIN")) {
-                tarifBase = 35.0;
-            } else if (visite.getType().equals("CHIRURGIE")) {
-                tarifBase = 250.0;
-            } else {
-                tarifBase = 0.0;
-            }
+            double tarifBase = visite.getTypeVisite().tarifBase();
             double tarif = visite.isUrgence() ? tarifBase * 1.5 : tarifBase;
             sousTotal += tarif;
         }
+        return sousTotal;
+    }
 
-        double remise = 0.0;
-        if (proprietaire.getAnimaux().size() > 1) {
-            remise = 0.10;
-        }
-        double total = sousTotal - (sousTotal * remise);
+    private double tauxRemiseFacture(Proprietaire proprietaire) {
+        return proprietaire.getAnimaux().size() > 1 ? 0.10 : 0.0;
+    }
 
+    private double appliquerPenaliteSolde(Proprietaire proprietaire, double total) {
         if (proprietaire.getSolde() < 0) {
-            total = total + (total * 0.05);
+            return total + (total * 0.05);
         }
+        return total;
+    }
 
+    private String formaterFacture(Proprietaire proprietaire, double sousTotal, double remise, double total) {
         StringBuilder sb = new StringBuilder();
         sb.append("Facture pour ").append(proprietaire.getPrenom()).append(" ").append(proprietaire.getNom());
         sb.append(" — Sous-total: $").append(String.format(Locale.US, "%.2f", sousTotal));
@@ -97,8 +101,6 @@ public class ServiceClinique {
     /**
      * Projette un coût annuel approximatif à partir d'un échantillon de visites d'un
      * mois type (on multiplie simplement par 12 — projection volontairement naïve).
-     *
-     * ⚠️ Aucun test ne couvre cette méthode actuellement.
      */
     public double estimerCoutAnnuel(List<Visite> visites) {
         if (visites == null || visites.isEmpty()) {
@@ -106,16 +108,7 @@ public class ServiceClinique {
         }
         double total = 0.0;
         for (Visite visite : visites) {
-            double tarifBase;
-            if (visite.getType().equals("CONSULTATION")) {
-                tarifBase = 60.0;
-            } else if (visite.getType().equals("VACCIN")) {
-                tarifBase = 35.0;
-            } else if (visite.getType().equals("CHIRURGIE")) {
-                tarifBase = 250.0;
-            } else {
-                tarifBase = 0.0;
-            }
+            double tarifBase = visite.getTypeVisite().tarifBase();
             total += tarifBase;
         }
         return total * 12;
@@ -123,54 +116,37 @@ public class ServiceClinique {
 
     /**
      * Retourne la durée estimée (en minutes) d'un rendez-vous selon le type de visite.
-     *
-     * ⚠️ Aucun test ne couvre cette méthode actuellement.
      */
     public int calculerDureeRendezVous(Visite visite) {
-        if (visite.getType().equals("CONSULTATION")) {
-            return 20;
-        } else if (visite.getType().equals("VACCIN")) {
-            return 10;
-        } else if (visite.getType().equals("CHIRURGIE")) {
-            return 90;
-        } else {
-            return 30;
-        }
+        return visite.getTypeVisite().dureeMinutes();
     }
 
     /**
      * Construit un rapport texte à l'intention d'un vétérinaire, résumant les
      * coordonnées du propriétaire et le nombre de visites.
-     *
-     * ⚠️ Aucun test ne couvre cette méthode actuellement.
      */
     public String genererRapportPourVeterinaire(Veterinaire veterinaire, Proprietaire proprietaire,
                                                  List<Visite> visites) {
         StringBuilder sb = new StringBuilder();
         sb.append("Rapport du Dr ").append(veterinaire.getNom())
           .append(" (").append(veterinaire.getSpecialite()).append(")\n");
-        sb.append("Client: ").append(proprietaire.getPrenom()).append(" ").append(proprietaire.getNom()).append("\n");
-        sb.append("Adresse: ").append(proprietaire.getRue()).append(", ").append(proprietaire.getVille())
-          .append(" ").append(proprietaire.getCodePostal()).append("\n");
-        sb.append("Contact: ").append(proprietaire.getEmail()).append(" / ").append(proprietaire.getTelephone())
-          .append("\n");
+        sb.append(proprietaire.resumeContact()).append("\n");
         sb.append("Nombre de visites: ").append(visites.size());
         return sb.toString();
     }
 
     /**
      * Planifie une nouvelle visite pour un animal.
-     *
-     * ⚠️ Aucun test ne couvre cette méthode actuellement.
      */
-    public Visite planifierVisite(int idAnimal, LocalDate date, String type, boolean urgence,
-                                   String nomVeterinaire, String notes, boolean envoyerRappelEmail) {
-        if (type == null || type.isBlank()) {
+    public Visite planifierVisite(DemandeVisite demande) {
+        if (demande.type() == null || demande.type().isBlank()) {
             throw new IllegalArgumentException("Le type de visite est requis");
         }
-        Visite visite = new Visite(date, type, urgence, nomVeterinaire, notes);
-        if (envoyerRappelEmail) {
-            journalRappels.add("Rappel envoyé pour la visite du " + date + " (animal #" + idAnimal + ")");
+        Visite visite = new Visite(demande.date(), demande.type(), demande.urgence(),
+                demande.nomVeterinaire(), demande.notes());
+        if (demande.envoyerRappelEmail()) {
+            journalRappels.add("Rappel envoyé pour la visite du " + demande.date()
+                    + " (animal #" + demande.idAnimal() + ")");
         }
         return visite;
     }
@@ -187,23 +163,13 @@ public class ServiceClinique {
      * - Un seul animal ET client depuis moins de 5 ans → 0.0
      */
     public double calculerRemiseFidelite(Proprietaire proprietaire) {
-        double remise = 0.0;
-        if (proprietaire != null) {
-            if (proprietaire.getSolde() >= 0) {
-                if (proprietaire.getAnimaux().size() > 1) {
-                    if (proprietaire.getAnneesClient() >= 3) {
-                        remise = 0.15;
-                    } else {
-                        remise = 0.10;
-                    }
-                } else {
-                    if (proprietaire.getAnneesClient() >= 5) {
-                        remise = 0.05;
-                    }
-                }
-            }
+        if (proprietaire == null || proprietaire.getSolde() < 0) {
+            return 0.0;
         }
-        return remise;
+        if (proprietaire.getAnimaux().size() > 1) {
+            return proprietaire.getAnneesClient() >= 3 ? 0.15 : 0.10;
+        }
+        return proprietaire.getAnneesClient() >= 5 ? 0.05 : 0.0;
     }
 
     public List<String> getJournalRappels() {

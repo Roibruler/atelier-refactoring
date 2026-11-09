@@ -9,14 +9,6 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>Atelier - Réusinage (refactoring)</name>
-    <description>
-        Petit projet de démonstration volontairement truffé de "code smells" (méthode trop
-        longue, duplication, liste de paramètres trop longue, obsession des primitifs,
-        feature envy, data clump, conditions répétées) pour pratiquer le catalogue de
-        réusinages de Fowler, appuyé par une suite de tests partielle à compléter.
-    </description>
-
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -52,9 +44,26 @@
                 <version>3.2.5</version>
             </plugin>
 
-            <!-- TODO (bonus, voir README Partie 5) : ajoutez ici le plugin jacoco-maven-plugin
-                 pour mesurer votre couverture de code avant/après l'ajout de vos tests de
-                 caractérisation (voir les notes de cours de la semaine 5). -->
+                        <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.14</version>
+                <executions>
+                    <execution>
+                        <id>preparer-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>rapport</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
